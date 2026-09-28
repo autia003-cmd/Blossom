@@ -19,38 +19,104 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Find project files
+        shell: pwsh
+        run: |
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          Write-Host ""
+          Write-Host "Files in repository:"
+          Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -File |
+            ForEach-Object { $_.FullName }
+
+      - name: Find Blossom.py
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem `
+            -Path $env:GITHUB_WORKSPACE `
+            -Recurse `
+            -File `
+            -Filter "Blossom.py" |
+            Select-Object -First 1
+
+          if (-not $file) {
+            Write-Error "Blossom.py was NOT found anywhere in the checked-out repository."
+            exit 1
+          }
+
+          Write-Host "Found Blossom.py:"
+          Write-Host $file.FullName
+
       - name: Install dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r "$env:GITHUB_WORKSPACE\requirements.txt"
           pip install pyinstaller
 
       - name: Check Python syntax
+        shell: pwsh
         run: |
-          python -m py_compile Blossom.py
+          $file = Get-ChildItem `
+            -Path $env:GITHUB_WORKSPACE `
+            -Recurse `
+            -File `
+            -Filter "Blossom.py" |
+            Select-Object -First 1
+
+          if (-not $file) {
+            Write-Error "Blossom.py was not found."
+            exit 1
+          }
+
+          python -m py_compile $file.FullName
 
       - name: Build EXE
+        shell: pwsh
         run: |
-          pyinstaller Blossom.spec
+          $spec = Get-ChildItem `
+            -Path $env:GITHUB_WORKSPACE `
+            -Recurse `
+            -File `
+            -Filter "Blossom.spec" |
+            Select-Object -First 1
 
-      - name: Verify EXE
+          if (-not $spec) {
+            Write-Error "Blossom.spec was not found."
+            exit 1
+          }
+
+          Write-Host "Building with:"
+          Write-Host $spec.FullName
+
+          pyinstaller --clean $spec.FullName
+
+      - name: Find EXE
+        shell: pwsh
         run: |
-          if (!(Test-Path "dist\Blossom.exe")) {
+          $exe = Get-ChildItem `
+            -Path $env:GITHUB_WORKSPACE `
+            -Recurse `
+            -File `
+            -Filter "Blossom.exe" |
+            Select-Object -First 1
+
+          if (-not $exe) {
             Write-Error "Blossom.exe was not created."
             exit 1
           }
 
-          Write-Host "Blossom.exe successfully created."
+          Write-Host "EXE created:"
+          Write-Host $exe.FullName
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
           name: Blossom-Windows
-          path: dist/Blossom.exe
+          path: "**/Blossom.exe"
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Blossom.exe
+          files: "**/Blossom.exe"
           generate_release_notes: true
