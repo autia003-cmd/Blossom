@@ -1,13 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules("pymem")
+from PyInstaller.utils.hooks import collect_all
 
-app = Analysis(
+datas, binaries, hiddenimports = collect_all("pymem")
+
+a = Analysis(
     ["Blossom.py"],
     pathex=[],
-    binaries=[],
-    datas=[],
+    binaries=binaries,
+    datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -16,13 +17,13 @@ app = Analysis(
     noarchive=False,
 )
 
-pyz = PYZ(app.pure)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
-    app.scripts,
-    app.binaries,
-    app.datas,
+    a.scripts,
+    a.binaries,
+    a.datas,
     [],
     name="Blossom",
     debug=False,
