@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Find Blossom files
+      - name: Find Blossom.py
         shell: pwsh
         run: |
           $source = Get-ChildItem `
@@ -58,7 +58,12 @@ jobs:
             -Filter "Blossom.py" |
             Select-Object -First 1
 
-          python -m py_compile "$source.FullName"
+          if (-not $source) {
+            Write-Error "Blossom.py was not found."
+            exit 1
+          }
+
+          python -m py_compile "$($source.FullName)"
 
       - name: Build EXE
         shell: pwsh
@@ -70,10 +75,24 @@ jobs:
             -Filter "Blossom.py" |
             Select-Object -First 1
 
-          Remove-Item -Recurse -Force "$env:GITHUB_WORKSPACE\build" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "$env:GITHUB_WORKSPACE\dist" -ErrorAction SilentlyContinue
+          if (-not $source) {
+            Write-Error "Blossom.py was not found."
+            exit 1
+          }
 
           $icon = Join-Path $source.Directory.FullName "assets\blossom.ico"
+
+          Remove-Item `
+            -Recurse `
+            -Force `
+            "$env:GITHUB_WORKSPACE\build" `
+            -ErrorAction SilentlyContinue
+
+          Remove-Item `
+            -Recurse `
+            -Force `
+            "$env:GITHUB_WORKSPACE\dist" `
+            -ErrorAction SilentlyContinue
 
           python -m PyInstaller `
             --clean `
@@ -86,7 +105,7 @@ jobs:
             --collect-all pymem `
             --collect-all PyQt6 `
             --icon "$icon" `
-            "$source.FullName"
+            "$($source.FullName)"
 
       - name: Verify EXE
         shell: pwsh
